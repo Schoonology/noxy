@@ -1,0 +1,29 @@
+{
+  "name": "noxy",
+  "version": "0.1.0",
+  "description": "A simple, deployable node.js-based proxy for clients that cannot create public addresses otherwise.",
+  "homepage": "http://github.com/Schoonology/noxy",
+  "main": "index.js",
+  "bin": "bin/noxy",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Schoonology/noxy.git"
+  },
+  "keywords": [
+    "proxy",
+    "public",
+    "ip",
+    "http",
+    "tcp",
+    "web"
+  ],
+  "author": "Michael Schoonmaker <michael.r.schoonmaker@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "nconf": "~0.6.4",
+    "stepdown": "~0.2.12"
+  }
+}

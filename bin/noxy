@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+var nconf = require('nconf')
+  , noxy = require('../lib/noxy')
+  , server = noxy.createServer('noxy')
+
+server.listen(function () {
+  console.log('Noxy ready for connections.')
+})
