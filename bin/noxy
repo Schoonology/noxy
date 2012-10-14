@@ -1,8 +1,33 @@
 #!/usr/bin/env node
-var nconf = require('nconf')
+var path = require('path')
+  , nconf = require('nconf')
   , noxy = require('../lib/noxy')
-  , server = noxy.createServer('noxy')
+  , self
 
-server.listen(function () {
-  console.log('Noxy ready for connections.')
-})
+nconf
+  .file('local', path.resolve(__dirname, '..', 'local-config.json'))
+  .file('default', path.resolve(__dirname, '..', 'config.json'))
+  .argv
+  .default({
+      server: false
+      noxy: {
+        passcode: Math.random.toString().slice(2)
+      }
+    })
+
+if (nconf.get('server')) {
+  self = noxy.createServer(nconf.get('noxy'))
+
+  self.listen(function () {
+    console.log('Noxy ready for connections.')
+    console.log('Public: ', nconf.get('noxy:public'))
+    console.log('Private: ', nconf.get('noxy:private'))
+    console.log('Passcode: ', nconf.get('noxy:passcode'))
+  })
+} else {
+  self = noxy.createClient(nconf.get('noxy'))
+
+  self.connect(function () {
+    console.log('Noxy connected.')
+  })
+}
