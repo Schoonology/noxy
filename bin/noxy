@@ -7,13 +7,19 @@ var path = require('path')
 nconf
   .file('local', path.resolve(__dirname, '..', 'local-config.json'))
   .file('default', path.resolve(__dirname, '..', 'config.json'))
-  .argv
-  .default({
+  .argv()
+  .defaults({
       server: false
-      noxy: {
+    , client: false
+    , noxy: {
         passcode: Math.random.toString().slice(2)
       }
     })
+
+if (nconf.get('server') === nconf.get('client')) {
+  console.log('Please select either --client or --server mode.')
+  process.exit()
+}
 
 if (nconf.get('server')) {
   self = noxy.createServer(nconf.get('noxy'))
@@ -24,7 +30,9 @@ if (nconf.get('server')) {
     console.log('Private: ', nconf.get('noxy:private'))
     console.log('Passcode: ', nconf.get('noxy:passcode'))
   })
-} else {
+}
+
+if (nconf.get('client')) {
   self = noxy.createClient(nconf.get('noxy'))
 
   self.connect(function () {
