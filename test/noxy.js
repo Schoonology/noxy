@@ -2,6 +2,7 @@
 var net = require('net')
   , expect = require('chai').expect
   , stepdown = require('stepdown')
+  , msgpack = require('msgpack3')
   , noxy = require('../lib/noxy')
 
 describe('Noxy', function () {
@@ -75,7 +76,9 @@ describe('Noxy', function () {
           socket = net.createConnection(self.options.private, this.addResult())
         }
       , function () {
-          socket.write(self.options.passcode, this.next)
+          socket.write(msgpack.pack({
+            passcode: self.options.passcode
+          }), this.next)
         }
       , function () {
           var tooLate = net.createConnection(self.options.private)
@@ -87,6 +90,7 @@ describe('Noxy', function () {
         }
       ], done)
     })
+
     it('should forward public traffic to the private tunnel')
   })
 
@@ -109,6 +113,26 @@ describe('Noxy', function () {
       ], done)
     })
 
-    it('should provide the supplied passcode')
+    it('should provide the supplied passcode', function (done) {
+      var self = this
+
+      stepdown([
+        function () {
+          self.server.listen(this.next)
+        }
+      , function () {
+          self.client.connect(this.next)
+        }
+      , function () {
+          // Same test as before: If we succeeded, this should auto-reject.
+          var tooLate = net.createConnection(self.options.private)
+            , next = this.next
+
+          tooLate.on('close', function (hadError) {
+            next(hadError ? new Error('Transmission Error') : null)
+          })
+        }
+      ], done)
+    })
   })
 })
