@@ -36,8 +36,57 @@ describe('Noxy', function () {
       // If this fails, we'll get ECONNREFUSED.
     })
 
-    it('should close any client socket that provides an invalid passcode')
-    it('should reject further client connections after the first successful')
+    it('should close any client socket that provides an invalid passcode', function (done) {
+      var self = this
+        , socket
+
+      stepdown([
+        function () {
+          self.server.listen(this.next)
+        }
+      , function () {
+          socket = net.createConnection(self.options.private, this.addResult())
+        }
+      , function () {
+          var next = this.next
+
+          socket.on('close', function (hadError) {
+            next(hadError ? new Error('Transmission Error') : null)
+          })
+
+          socket.write('wrongpasscode', function (err) {
+            if (err) {
+              next(err)
+            }
+          })
+        }
+      ], done)
+    })
+
+    it('should auto-reject further client connections after the first successful', function (done) {
+      var self = this
+        , socket
+
+      stepdown([
+        function () {
+          self.server.listen(this.next)
+        }
+      , function () {
+          socket = net.createConnection(self.options.private, this.addResult())
+        }
+      , function () {
+          socket.write(self.options.passcode, this.next)
+        }
+      , function () {
+          var tooLate = net.createConnection(self.options.private)
+            , next = this.next
+
+          tooLate.on('close', function (hadError) {
+            next(hadError ? new Error('Transmission Error') : null)
+          })
+        }
+      ], done)
+    })
     it('should forward public traffic to the private tunnel')
   })
 
