@@ -8,13 +8,10 @@ var net = require('net')
 describe('Noxy', function () {
   beforeEach(function () {
     this.options = {
-      tunnel: {
-        port: 9999
-      }
-    , service: {
-        port: 8080
-      }
+      tunnel: 'localhost:9999'
+    , port: 9999
     , passcode: 'secure'
+    , service: 10000
     }
     this.server = noxy.createServer(this.options)
     this.client = noxy.createClient(this.options)
@@ -26,7 +23,7 @@ describe('Noxy', function () {
   })
 
   describe('Server', function () {
-    it('should listen on the tunnel.port', function (done) {
+    it('should listen on the provided port', function (done) {
       var self = this
 
       stepdown([
@@ -34,7 +31,7 @@ describe('Noxy', function () {
           self.server.listen(this.next)
         }
       , function () {
-          net.createConnection(self.options.tunnel.port, this.next)
+          net.createConnection(self.options.port, this.next)
         }
       ], done)
       // If this fails, we'll get ECONNREFUSED.
@@ -49,7 +46,7 @@ describe('Noxy', function () {
           self.server.listen(this.next)
         }
       , function () {
-          socket = net.createConnection(self.options.tunnel.port, this.addResult())
+          socket = net.createConnection(self.options.port, this.addResult())
         }
       , function () {
           var next = this.next
@@ -78,7 +75,7 @@ describe('Noxy', function () {
           expect(self.server._tunnel).to.not.exist
         }
       , function () {
-          socket = net.createConnection(self.options.tunnel.port, this.addResult())
+          socket = net.createConnection(self.options.port, this.addResult())
         }
       , function () {
           socket.write(msgpack.pack({
@@ -86,7 +83,7 @@ describe('Noxy', function () {
           }), this.next)
         }
       , function () {
-          tooLate = net.createConnection(self.options.tunnel.port, this.next)
+          tooLate = net.createConnection(self.options.port, this.next)
         }
       , function () {
           expect(self.server._tunnel).to.exist
@@ -114,13 +111,13 @@ describe('Noxy', function () {
               localServer.close(done)
             })
           })
-          localServer.listen(self.options.service.port, this.addResult())
+          localServer.listen(self.options.service, this.addResult())
         }
       , function () {
           self.client.connect(this.next)
         }
       , function () {
-          publicClient = net.createConnection(self.options.tunnel.port, function () {
+          publicClient = net.createConnection(self.options.port, function () {
             publicClient.write(msgpack.pack({
               answer: 42
             }))
@@ -147,13 +144,13 @@ describe('Noxy', function () {
               }))
             })
           })
-          localServer.listen(self.options.service.port, this.addResult())
+          localServer.listen(self.options.service, this.addResult())
         }
       , function () {
           self.client.connect(this.next)
         }
       , function () {
-          publicClient = net.createConnection(self.options.tunnel.port, function () {
+          publicClient = net.createConnection(self.options.port, function () {
             publicClient.write(msgpack.pack({
               answer: 42
             }))
@@ -172,7 +169,7 @@ describe('Noxy', function () {
   })
 
   describe('Client', function () {
-    it('should connect to the provided tunnel.port', function (done) {
+    it('should connect to the provided port', function (done) {
       var self = this
 
       stepdown([
@@ -202,7 +199,7 @@ describe('Noxy', function () {
           self.client.connect(this.next)
         }
       , function () {
-          tooLate = net.createConnection(self.options.tunnel.port, this.next)
+          tooLate = net.createConnection(self.options.port, this.next)
         }
       , function () {
           expect(self.server._tunnel).to.exist

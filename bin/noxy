@@ -11,15 +11,9 @@ nconf
   .defaults({
       server: false
     , client: false
-    , noxy: {
-        tunnel: {
-          port: 9999
-        }
-      , service: {
-          port: 8080
-        }
-      , passcode: Math.random().toString().slice(2)
-      }
+    , passcode: Math.random().toString().slice(2)
+    , port: 80
+    , service: 8080
     })
 
 if (nconf.get('server') === nconf.get('client')) {
@@ -28,7 +22,10 @@ if (nconf.get('server') === nconf.get('client')) {
 }
 
 if (nconf.get('server')) {
-  self = noxy.createServer(nconf.get('noxy'))
+  self = noxy.createServer({
+    passcode: nconf.get('passcode')
+  , port: nconf.get('port')
+  })
 
   self.listen(function () {
     console.log('Noxy ready for connections.')
@@ -38,7 +35,11 @@ if (nconf.get('server')) {
 }
 
 if (nconf.get('client')) {
-  self = noxy.createClient(nconf.get('noxy'))
+  self = noxy.createClient({
+    passcode: nconf.get('passcode')
+  , tunnel: nconf.get('tunnel') || nconf.get('port')
+  , service: nconf.get('service')
+  })
 
   self.connect(function () {
     console.log('Noxy connected.')
