@@ -1,2 +1,5 @@
 {
+  "noxy": {
+    "passcode": "something secure"
+  }
 }
