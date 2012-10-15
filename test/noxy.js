@@ -8,8 +8,12 @@ var net = require('net')
 describe('Noxy', function () {
   beforeEach(function () {
     this.options = {
-      public: 9999
-    , private: 9998
+      tunnel: {
+        port: 9999
+      }
+    , service: {
+        port: 8080
+      }
     , passcode: 'secure'
     }
     this.server = noxy.createServer(this.options)
@@ -22,7 +26,7 @@ describe('Noxy', function () {
   })
 
   describe('Server', function () {
-    it('should listen on both the public and private ports simulateneously', function (done) {
+    it('should listen on the tunnel.port', function (done) {
       var self = this
 
       stepdown([
@@ -30,8 +34,7 @@ describe('Noxy', function () {
           self.server.listen(this.next)
         }
       , function () {
-          net.createConnection(self.options.private, this.addResult())
-          net.createConnection(self.options.public, this.addResult())
+          net.createConnection(self.options.tunnel.port, this.next)
         }
       ], done)
       // If this fails, we'll get ECONNREFUSED.
@@ -46,7 +49,7 @@ describe('Noxy', function () {
           self.server.listen(this.next)
         }
       , function () {
-          socket = net.createConnection(self.options.private, this.addResult())
+          socket = net.createConnection(self.options.tunnel.port, this.addResult())
         }
       , function () {
           var next = this.next
@@ -64,16 +67,18 @@ describe('Noxy', function () {
       ], done)
     })
 
-    it('should auto-reject further client connections after the first successful', function (done) {
+    it('should treat connections after the first successful as public', function (done) {
       var self = this
         , socket
+        , tooLate
 
       stepdown([
         function () {
           self.server.listen(this.next)
+          expect(self.server._tunnel).to.not.exist
         }
       , function () {
-          socket = net.createConnection(self.options.private, this.addResult())
+          socket = net.createConnection(self.options.tunnel.port, this.addResult())
         }
       , function () {
           socket.write(msgpack.pack({
@@ -81,12 +86,13 @@ describe('Noxy', function () {
           }), this.next)
         }
       , function () {
-          var tooLate = net.createConnection(self.options.private)
-            , next = this.next
+          tooLate = net.createConnection(self.options.tunnel.port, this.next)
+        }
+      , function () {
+          expect(self.server._tunnel).to.exist
+          tooLate.destroy()
 
-          tooLate.on('close', function (hadError) {
-            next(hadError ? new Error('Transmission Error') : null)
-          })
+          return null
         }
       ], done)
     })
@@ -104,17 +110,17 @@ describe('Noxy', function () {
               data = msgpack.unpack(data)
 
               expect(data).to.have.property('answer', 42)
-              done()
+              publicClient.destroy()
+              localServer.close(done)
             })
           })
-          localServer.listen(10000, this.addResult())
+          localServer.listen(self.options.service.port, this.addResult())
         }
       , function () {
           self.client.connect(this.next)
-          self.client.public = 10000
         }
       , function () {
-          publicClient = net.createConnection(self.server.public, function () {
+          publicClient = net.createConnection(self.options.tunnel.port, function () {
             publicClient.write(msgpack.pack({
               answer: 42
             }))
@@ -123,48 +129,50 @@ describe('Noxy', function () {
       ])
     })
 
-    // it('should forward private responses to the public socket', function (done) {
-    //   var self = this
-    //     , localServer
-    //     , publicClient
+    it('should forward private responses to the public client', function (done) {
+      var self = this
+        , localServer
+        , publicClient
 
-    //   stepdown([
-    //     function () {
-    //       self.server.listen(this.next)
-    //       localServer = net.createServer(function (socket) {
-    //         socket.on('data', function (data) {
-    //           data = msgpack.unpack(data)
+      stepdown([
+        function () {
+          self.server.listen(this.addResult())
+          localServer = net.createServer(function (socket) {
+            socket.on('data', function (data) {
+              data = msgpack.unpack(data)
 
-    //           expect(data).to.have.property('answer', 42)
-    //           socket.write(msgpack.pack({
-    //             question: '???'
-    //           }))
-    //         })
-    //       })
-    //     }
-    //   , function () {
-    //       self.client.connect(this.next)
-    //     }
-    //   , function () {
-    //       publicClient = net.createConnection(self.server.public, function () {
-    //         publicClient.write(msgpack.pack({
-    //           answer: 42
-    //         }))
-    //       })
+              expect(data).to.have.property('answer', 42)
+              socket.write(msgpack.pack({
+                question: '???'
+              }))
+            })
+          })
+          localServer.listen(self.options.service.port, this.addResult())
+        }
+      , function () {
+          self.client.connect(this.next)
+        }
+      , function () {
+          publicClient = net.createConnection(self.options.tunnel.port, function () {
+            publicClient.write(msgpack.pack({
+              answer: 42
+            }))
+          })
 
-    //       publicClient.on('data', function (data) {
-    //         data = msgpack.unpack(data)
+          publicClient.on('data', function (data) {
+            data = msgpack.unpack(data)
 
-    //         expect(data).to.have.property('question', '???')
-    //         done()
-    //       })
-    //     }
-    //   ])
-    // })
+            expect(data).to.have.property('question', '???')
+            publicClient.destroy()
+            localServer.close(done)
+          })
+        }
+      ])
+    })
   })
 
   describe('Client', function () {
-    it('should connect to the provided Server\'s private port', function (done) {
+    it('should connect to the provided tunnel.port', function (done) {
       var self = this
 
       stepdown([
@@ -175,8 +183,7 @@ describe('Noxy', function () {
           self.client.connect(this.next)
         }
       , function () {
-          expect(self.server._private.connections).to.equal(1)
-          expect(self.server._public.connections).to.equal(0)
+          expect(self.server._server.connections).to.equal(1)
           return null
         }
       ], done)
@@ -184,22 +191,24 @@ describe('Noxy', function () {
 
     it('should provide the supplied passcode', function (done) {
       var self = this
+        , tooLate
 
       stepdown([
         function () {
           self.server.listen(this.next)
+          expect(self.server._tunnel).to.not.exist
         }
       , function () {
           self.client.connect(this.next)
         }
       , function () {
-          // Same test as before: If we succeeded, this should auto-reject.
-          var tooLate = net.createConnection(self.options.private)
-            , next = this.next
+          tooLate = net.createConnection(self.options.tunnel.port, this.next)
+        }
+      , function () {
+          expect(self.server._tunnel).to.exist
+          tooLate.destroy()
 
-          tooLate.on('close', function (hadError) {
-            next(hadError ? new Error('Transmission Error') : null)
-          })
+          return null
         }
       ], done)
     })

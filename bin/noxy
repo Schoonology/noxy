@@ -5,15 +5,20 @@ var path = require('path')
   , self
 
 nconf
-  .file('local', path.resolve(__dirname, '..', 'local-config.json'))
+  .file('overrides', path.resolve(__dirname, '..', 'config.json'))
   .env()
-  .file('file', path.resolve(__dirname, '..', 'config.json'))
   .argv()
   .defaults({
       server: false
     , client: false
     , noxy: {
-        passcode: Math.random().toString().slice(2)
+        tunnel: {
+          port: 9999
+        }
+      , service: {
+          port: 8080
+        }
+      , passcode: Math.random().toString().slice(2)
       }
     })
 
@@ -27,9 +32,8 @@ if (nconf.get('server')) {
 
   self.listen(function () {
     console.log('Noxy ready for connections.')
-    console.log('Public: ', nconf.get('noxy:public'))
-    console.log('Private: ', nconf.get('noxy:private'))
-    console.log('Passcode: ', nconf.get('noxy:passcode'))
+    console.log('Port: ', self.port)
+    console.log('Passcode: ', self.passcode)
   })
 }
 
