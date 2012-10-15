@@ -6,7 +6,8 @@ var path = require('path')
 
 nconf
   .file('local', path.resolve(__dirname, '..', 'local-config.json'))
-  .file('default', path.resolve(__dirname, '..', 'config.json'))
+  .env()
+  .file('file', path.resolve(__dirname, '..', 'config.json'))
   .argv()
   .defaults({
       server: false
