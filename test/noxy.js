@@ -91,7 +91,76 @@ describe('Noxy', function () {
       ], done)
     })
 
-    it('should forward public traffic to the private tunnel')
+    it('should forward public traffic to the private tunnel', function (done) {
+      var self = this
+        , localServer
+        , publicClient
+
+      stepdown([
+        function () {
+          self.server.listen(this.addResult())
+          localServer = net.createServer(function (socket) {
+            socket.on('data', function (data) {
+              data = msgpack.unpack(data)
+
+              expect(data).to.have.property('answer', 42)
+              done()
+            })
+          })
+          localServer.listen(10000, this.addResult())
+        }
+      , function () {
+          self.client.connect(this.next)
+          self.client.public = 10000
+        }
+      , function () {
+          publicClient = net.createConnection(self.server.public, function () {
+            publicClient.write(msgpack.pack({
+              answer: 42
+            }))
+          })
+        }
+      ])
+    })
+
+    // it('should forward private responses to the public socket', function (done) {
+    //   var self = this
+    //     , localServer
+    //     , publicClient
+
+    //   stepdown([
+    //     function () {
+    //       self.server.listen(this.next)
+    //       localServer = net.createServer(function (socket) {
+    //         socket.on('data', function (data) {
+    //           data = msgpack.unpack(data)
+
+    //           expect(data).to.have.property('answer', 42)
+    //           socket.write(msgpack.pack({
+    //             question: '???'
+    //           }))
+    //         })
+    //       })
+    //     }
+    //   , function () {
+    //       self.client.connect(this.next)
+    //     }
+    //   , function () {
+    //       publicClient = net.createConnection(self.server.public, function () {
+    //         publicClient.write(msgpack.pack({
+    //           answer: 42
+    //         }))
+    //       })
+
+    //       publicClient.on('data', function (data) {
+    //         data = msgpack.unpack(data)
+
+    //         expect(data).to.have.property('question', '???')
+    //         done()
+    //       })
+    //     }
+    //   ])
+    // })
   })
 
   describe('Client', function () {
