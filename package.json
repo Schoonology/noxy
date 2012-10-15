@@ -25,7 +25,7 @@
   "dependencies": {
     "nconf": "~0.6.4",
     "stepdown": "~0.2.12",
-    "msgpack": "~0.1.5"
+    "msgpack3": "~0.1.2"
   },
   "devDependencies": {
     "mocha": "~1.6.0",
